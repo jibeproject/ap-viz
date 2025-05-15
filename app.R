@@ -5,8 +5,13 @@ library(dplyr)
 library(readr)
 library(tidyr)
 library(DT)
+library(tidyverse)
 
 # Load Data
+ap_base_novent <- read_csv("E:/Tabea/manchester-main/scenOutput/base_novent/microData/pp_exposure_2021.csv")
+ap_base_newvent <- read_csv("E:/Tabea/manchester-main/scenOutput/base_newvent/microData/pp_exposure_2021.csv")
+ap_both_novent <- read_csv("E:/Tabea/manchester-main/scenOutput/both_novent/microData/pp_exposure_2021.csv")
+ap_both_newvent <- read_csv("E:/Tabea/manchester-main/scenOutput/both_newvent/microData/pp_exposure_2021.csv")
 ap_ref <- read_csv("data/pp_exposure_2021_reference.csv")
 ap_ss <- read_csv("data/pp_exposure_2021_ss.csv")
 ap_green <- read_csv("data/pp_exposure_2021_green.csv")
@@ -18,6 +23,7 @@ zone <- read_csv("data/zoneSystem.csv")
 process_data <- function(df, scenario_name) {
   df %>%
     select(id, hhid, age, gender, occupation,
+           totalTimeAtHome_min, totalActivityTime_min, totalTravelTime_sec,  
            mmetHr_walk, mmetHr_cycle, mmetHr_otherSport, income,
            exposure_normalised_pm25, exposure_normalised_no2,
            exposure_noise_HA, exposure_noise_HSD,
@@ -34,12 +40,16 @@ ap_ref <- process_data(ap_ref, "Baseline")
 ap_ss <- process_data(ap_ss, "Safe Streets")
 ap_green <- process_data(ap_green, "Greening")
 ap_both <- process_data(ap_both, "Both")
+ap_base_novent <- process_data(ap_base_novent, "Baseline - No Ventilation")
+ap_base_newvent <- process_data(ap_base_newvent, "Baseline - New Ventilation")
+ap_both_novent <- process_data(ap_both_novent, "Both - No Ventilation")
+ap_both_newvent <- process_data(ap_both_newvent, "Both - New Ventilation")
 
 # Combine all scenarios
-exposure <- bind_rows(ap_ref, ap_ss, ap_green, ap_both)
+exposure <- bind_rows(ap_ref, ap_ss, ap_green, ap_both, ap_base_novent, ap_base_newvent, ap_both_novent, ap_both_newvent)
 
 # Cleanup
-rm(ap_ref, ap_ss, ap_green, ap_both, hh_ref, zone)
+rm(ap_ref, ap_ss, ap_green, ap_both, ap_base_novent, ap_base_newvent, ap_both_novent, ap_both_newvent, zone, hh_ref)
 
 # Further transformations
 exposure <- exposure %>%
@@ -57,20 +67,15 @@ exposure <- exposure %>%
                        breaks = quantile(income, probs = seq(0, 1, 0.2), na.rm = TRUE),
                        labels = c("Lowest", "Low", "Middle", "High", "Highest"),
                        include.lowest = TRUE),
-    mmetHr_total = round(mmetHr_cycle + mmetHr_otherSport + mmetHr_walk, 2)
-  )
+    mmetHr_total = round(mmetHr_cycle + mmetHr_otherSport + mmetHr_walk, 2),
+    Scenario = factor(Scenario,
+                      levels = c("Baseline","Both","Baseline - No Ventilation", "Both - No Ventilation", "Baseline - New Ventilation", "Both - New Ventilation", "Safe Streets", "Greening")))
 
-write_csv(exposure, "data/exposure.csv")
+write_csv(exposure, "data/exposure_withVents.csv")
 
 ################################# Run from here ################################
-
-library(shiny)
-library(dplyr)
-library(readr)
-library(tidyr)
-library(DT)
-
 exposure <- read_csv("manchester/health/processed/exposure.csv")
+
 
 ui <- fluidPage(
   titlePanel("Weekly Individual Environmental Exposure Summary Tables"),
